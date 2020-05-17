@@ -12,5 +12,6 @@ namespace StockSimulator.Models
         public int sharesOwned { get; set; }
         public DateTime date { get; set; }
         public double price { get; set; }
+        public bool moneyFormat { get; set; }
     }
 }

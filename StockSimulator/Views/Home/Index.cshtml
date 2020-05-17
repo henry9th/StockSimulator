@@ -4,62 +4,77 @@
     var allStockPriceData = ViewData["allStockPriceData"];
 }
 
-<asp:Content ID="BodyContent" ContentPlaceHolderID="MainContent" runat="server">
+    <asp:Content ID="BodyContent" ContentPlaceHolderID="MainContent" runat="server">
 
-    <div class="jumbotron">
-        <h1>Investment Calculator</h1>
-        <p class="lead">A simple tool where you can input stocks, the number of shares, and purchase date to calculate the total value today. More details here... </p>
-    </div>
-
-
-    <div class="row" id="input-rows">
-
-        <div class="row input-row">
-            <div class="col-md-4" id="stock-inputs">
-                <h5>Stock Symbol</h5>
-                <input type="text" />
-            </div>
-
-            <div class="col-md-3" id="numShares-inputs">
-                <h5># of shares</h5>
-                <input type="number" min="0" />
-            </div>
-
-            <div class="col-md-3" id="date-inputs">
-                <h5>Date</h5>
-                <input type="date" />
-            </div>
-        </div>
-    </div>
-
-
-
-    <div class="row" ">
-        <div id="submit-options-div" class="col-md-3">
-            <button class="" id="add-new-row-button" onclick="addNewRow(); return false">+ New row</button> <br />
-
-            <div id="result-date-div">Target Date:<input type="date" id="result-date" /></div> <br />
-
-            <button class="" id="calculate-button" onclick="calculatePortfolio(); return false">Calculate</button>
-
+        <div class="jumbotron">
+            <h1>Investment Calculator</h1>
+            <p class="lead">
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur eget dictum leo. Suspendisse potenti. Nunc tempor viverra mollis. Mauris posuere ullamcorper est, at cursus nibh tincidunt sit amet. Nam quam tellus, posuere vel porta eget, ultrices varius magna. Nam sollicitudin at sem vel aliquet. In sit amet posuere neque. Integer laoreet, dolor non posuere hendrerit, velit urna vehicula libero, vitae fringilla quam nulla eleifend augue.
+            </p>
         </div>
 
-    </div>
+        <h6>#&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;$ </h6> 
+        
+        <label class="switch">
+            <input id="input-checkbox" type="checkbox" onclick="updateInputHeader();">
+            <span class="slider"></span>
+        </label>
 
-    <div id="result-div">
-        <h3 id="total-cost-text"></h3>
-        <h3 id="total-value-text"></h3>
+        <div class="row" id="input-rows">
 
-        <div id="chart"> </div>
-    </div>
+            <div class="row input-row">
+                <div class="col-md-4" id="stock-inputs">
+                    <h5>Stock Symbol</h5>
+                    <input type="text" />
+                </div>
+
+                <div class="col-md-4" id="numShares-inputs">
+                    <h5 id="input-type-text"># of Shares</h5>
+                    <input type="number" min="0" />
+                </div>
+
+                <div class="col-md-3" id="date-inputs">
+                    <h5>Date</h5>
+                    <input type="date" />
+                </div>
+            </div>
+        </div>
 
 
-    <script>
+
+        <div class="row" ">
+            <div id="submit-options-div" class="col-md-3">
+                <button class="" id="add-new-row-button" onclick="addNewRow(); return false">+ New row</button> <br />
+
+                <div hidden id="result-date-div">Target Date:<input type="date" id="result-date" /></div> <br />
+
+                <button class="" id="calculate-button" onclick="calculatePortfolio(); return false">Calculate</button>
+
+            </div>
+
+        </div>
+
+        <div id="result-div">
+            <h3 id="total-cost-text"></h3>
+            <h3 id="total-value-text"></h3>
+
+            <div id="chartContainer" style="height: 500px; width: 100%;"></div>
+            <script src="https://canvasjs.com/assets/script/jquery-1.11.1.min.js"></script>
+            <script src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
+        </div>
+
+
+        <script>
+
         document.getElementById("result-date").value = (new Date()).toISOString().substr(0, 10);
 
-        window.onerror = function () {
-            alert("error hit");
-        }
+            function updateInputHeader() {
+                if (document.getElementById("input-checkbox").checked) {
+                    document.getElementById("input-type-text").innerHTML = "$ (USD)"
+                } else {
+                    document.getElementById("input-type-text").innerHTML = "# of Shares"
+                }
+            }
 
         // Adding a new row for inputting stock purchase
         function addNewRow() {
@@ -82,7 +97,7 @@
             dateDiv.appendChild(dateInput);
         }
 
-        // Organize the data before sending it to the controller 
+        // Organize the data before sending it to the controller
         function calculatePortfolio() {
             var stockInputs = $("#stock-inputs input");
             var numSharesInputs = $("#numShares-inputs input");
@@ -118,19 +133,20 @@
             }
             console.log("inputData:", inputData);
 
+            var moneyFormat = document.getElementById("input-checkbox").checked;
+
             $.ajax({
                 url: "@Url.Action("Calculate")",
                 dataType: "json",
                 type: 'POST',
-                data: { inputData: JSON.stringify(inputData), targetDate: targetDate },            
+                data: { inputData: JSON.stringify(inputData), targetDate: targetDate, moneyFormat: moneyFormat },
                 success: function (response) {
-                    alert("success");
                     displayResults(response.result);
                 },
-                error: function (error) {  
+                error: function (error) {
                     console.log(error);
                     alert("Error !!");
-                    }  
+                    }
             });
         }
 
@@ -145,11 +161,45 @@
             var finalDataPoint = networthDataPoints[networthDataPoints.length - 1];
 
 
-            document.getElementById("total-cost-text").innerHTML = "Total Cost: " + finalDataPoint.totalCost.toFixed(2); 
-            document.getElementById("total-value-text").innerHTML = "Value as of today: " + finalDataPoint.totalValue.toFixed(2); 
+            document.getElementById("total-cost-text").innerHTML = "Total Cost: " + finalDataPoint.totalCost.toFixed(2);
+            document.getElementById("total-value-text").innerHTML = "Value as of today: " + finalDataPoint.totalValue.toFixed(2);
+
+            var dataPoints = [];
+
+            networthDataPoints.forEach(function (dataPoint) {
+                dataPoints.push({ x: new Date(dataPoint.date), y: dataPoint.totalValue});
+            });
+
+            var options =  {
+	            animationEnabled: true,
+	            theme: "dark2",
+	            title: {
+                    text: "Portfolio Value",
+                    fontSize: 30,
+                    fontFamily: "Calibri"
+	            },
+	            axisX: {
+		            valueFormatString: "DD MMM YYYY",
+	            },
+	            axisY: {
+		            title: "USD",
+		            titleFontSize: 24,
+                    includeZero: false,
+                    fontFamily: "Calibri"
+	            },
+	            data: [{
+		            type: "spline",
+		            yValueFormatString: "$#,###.##",
+		            dataPoints: dataPoints
+	            }]
+            };
+
+            var chart = new CanvasJS.Chart("chartContainer", options);
+
+            chart.render();
 
         }
 
-    </script>
+        </script>
 
-</asp:Content>
+    </asp:Content>

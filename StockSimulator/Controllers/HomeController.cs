@@ -55,7 +55,7 @@ namespace StockSimulator.Controllers
             return uniqueSymbols;
         }
 
-        public IList<Stock> getPriceDataAndCombineWithInput(string symbol, IList<Stock> inputDataList, Dictionary<string, DateTime> uniqueSymbols)
+        public IList<Stock> getPriceDataAndCombineWithInput(string symbol, IList<Stock> inputDataList, Dictionary<string, DateTime> uniqueSymbols, bool moneyFormat)
         {
             IEnumerable<JToken> rawData = getAVStockInfo(symbol).Reverse();
 
@@ -75,12 +75,22 @@ namespace StockSimulator.Controllers
                     // if the stock object already exists in our input array, just add the price and return that 
                     if (DateTime.Parse(((JProperty)data).Name) == d.date && symbol == d.symbol)
                     {
+                        var price = data.First.Value<double>("4. close");
+
+                        if (moneyFormat)
+                        {
+                            var money = d.sharesBought;
+                            int actualSharesBought = (int)(money / price);
+                            d.sharesBought = actualSharesBought;
+                        }
+
                         return new Stock
                         {
                             symbol = symbol,
                             sharesBought = d.sharesBought,
                             date = DateTime.Parse(((JProperty)data).Name),
-                            price = data.First.Value<double>("4. close")
+                            price = price,
+                            moneyFormat = moneyFormat
                         };
                     }
                 }
@@ -91,7 +101,8 @@ namespace StockSimulator.Controllers
                     symbol = symbol,
                     sharesBought = 0,
                     date = DateTime.Parse(((JProperty)data).Name),
-                    price = data.First.Value<double>("4. close")
+                    price = data.First.Value<double>("4. close"),
+                    moneyFormat = moneyFormat
                 };
             }).ToList();
 
@@ -109,10 +120,19 @@ namespace StockSimulator.Controllers
 
                 for (int i = 0; i < stockData.Count; i++)
                 {
-                    if (stockData[i].date == d.date && stockData[i].symbol == d.symbol)
+                    var stock = stockData[i];
+
+                    if (stock.date == d.date && stock.symbol == d.symbol)
                     {
+                        if (moneyFormat)
+                        {
+                            var money = d.sharesBought;
+                            int actualSharesBought = (int)(money / stock.price);
+                            d.sharesBought = actualSharesBought;
+                        }
+
                         relevantInput.Remove(d);
-                        stockData[i].sharesBought = d.sharesBought;
+                        stock.sharesBought = d.sharesBought;
                     }
                 }
 
@@ -218,9 +238,26 @@ namespace StockSimulator.Controllers
             return networthDataPoints;
         }
 
+        // transforms provided data so numshares represents not the money but the money/share price
+        //public void convertNumsharesFromMoney(IList<IList<Stock>> allStockPriceData)
+        //{
+        //    foreach (IList<Stock> stockPriceData in allStockPriceData)
+        //    {
+        //        for (int i = 0; i < stockPriceData.Count; i++)
+        //        {
+        //            Stock stock = stockPriceData[i];
+        //            if (stock.sharesBought > 0)
+        //            {
+
+        //            }
+        //        }
+        //    }
+        //}
+
         [HttpPost]
-        public IActionResult Calculate(string inputData, DateTime targetDate)
+        public IActionResult Calculate(string inputData, DateTime targetDate, bool moneyFormat)
         {
+
             var inputDataList = JsonConvert.DeserializeObject<List<Stock>>(inputData);
 
             var uniqueSymbols = getUniqueSymbols(inputDataList);
@@ -229,7 +266,7 @@ namespace StockSimulator.Controllers
 
             foreach (string symbol in uniqueSymbols.Keys)
             {
-                allStockPriceData.Add(getPriceDataAndCombineWithInput(symbol, inputDataList, uniqueSymbols).ToList());
+                allStockPriceData.Add(getPriceDataAndCombineWithInput(symbol, inputDataList, uniqueSymbols, moneyFormat).ToList());
             }
 
             IEnumerable<NetWorthDataPoint> networthDataPoints = getNetworthDataPoints(allStockPriceData);
