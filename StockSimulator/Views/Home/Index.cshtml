@@ -1,0 +1,155 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+
+    var allStockPriceData = ViewData["allStockPriceData"];
+}
+
+<asp:Content ID="BodyContent" ContentPlaceHolderID="MainContent" runat="server">
+
+    <div class="jumbotron">
+        <h1>Investment Calculator</h1>
+        <p class="lead">A simple tool where you can input stocks, the number of shares, and purchase date to calculate the total value today. More details here... </p>
+    </div>
+
+
+    <div class="row" id="input-rows">
+
+        <div class="row input-row">
+            <div class="col-md-4" id="stock-inputs">
+                <h5>Stock Symbol</h5>
+                <input type="text" />
+            </div>
+
+            <div class="col-md-3" id="numShares-inputs">
+                <h5># of shares</h5>
+                <input type="number" min="0" />
+            </div>
+
+            <div class="col-md-3" id="date-inputs">
+                <h5>Date</h5>
+                <input type="date" />
+            </div>
+        </div>
+    </div>
+
+
+
+    <div class="row" ">
+        <div id="submit-options-div" class="col-md-3">
+            <button class="" id="add-new-row-button" onclick="addNewRow(); return false">+ New row</button> <br />
+
+            <div id="result-date-div">Target Date:<input type="date" id="result-date" /></div> <br />
+
+            <button class="" id="calculate-button" onclick="calculatePortfolio(); return false">Calculate</button>
+
+        </div>
+
+    </div>
+
+    <div id="result-div">
+        <h3 id="total-cost-text"></h3>
+        <h3 id="total-value-text"></h3>
+
+        <div id="chart"> </div>
+    </div>
+
+
+    <script>
+        document.getElementById("result-date").value = (new Date()).toISOString().substr(0, 10);
+
+        window.onerror = function () {
+            alert("error hit");
+        }
+
+        // Adding a new row for inputting stock purchase
+        function addNewRow() {
+            var stockInputsDiv = document.getElementById("stock-inputs");
+            var numSharesDiv = document.getElementById("numShares-inputs");
+            var dateDiv = document.getElementById("date-inputs");
+
+            var stockInput = document.createElement("input");
+            stockInput.setAttribute("type", "text");
+
+            var numSharesInput = document.createElement("input");
+            numSharesInput.setAttribute("type", "number");
+            numSharesInput.setAttribute("min", "0");
+
+            var dateInput = document.createElement("input");
+            dateInput.setAttribute("type", "date");
+
+            stockInputsDiv.appendChild(stockInput);
+            numSharesDiv.appendChild(numSharesInput);
+            dateDiv.appendChild(dateInput);
+        }
+
+        // Organize the data before sending it to the controller 
+        function calculatePortfolio() {
+            var stockInputs = $("#stock-inputs input");
+            var numSharesInputs = $("#numShares-inputs input");
+            var dateInputs = $("#date-inputs input");
+
+            var targetDate = document.getElementById("result-date").value;
+
+            var count = stockInputs.length;
+
+            let inputData = [];
+
+            // Organize each row data into each dict
+            for (i = 0; i < count; i++) {
+                var symbol = stockInputs[i].value;
+                var numShares = numSharesInputs[i].value;
+                var date = dateInputs[i].value;
+
+                console.log(symbol);
+                console.log(numShares);
+                console.log(date);
+
+                if (symbol == "" || isNaN(numShares) || numShares < 0 || date == "") {
+                    alert("Unallowed value on row: " + (i + 1));
+                    return;
+                }
+
+                inputData.push({
+                    symbol: symbol,
+                    sharesBought: numShares,
+                    date: date
+                });
+
+            }
+            console.log("inputData:", inputData);
+
+            $.ajax({
+                url: "@Url.Action("Calculate")",
+                dataType: "json",
+                type: 'POST',
+                data: { inputData: JSON.stringify(inputData), targetDate: targetDate },            
+                success: function (response) {
+                    alert("success");
+                    displayResults(response.result);
+                },
+                error: function (error) {  
+                    console.log(error);
+                    alert("Error !!");
+                    }  
+            });
+        }
+
+        function displayResults(result) {
+
+            var formattedResult = JSON.parse(result);
+
+            var allStockPriceData = formattedResult.allStockPriceData;
+
+            var networthDataPoints = formattedResult.networthDataPoints;
+
+            var finalDataPoint = networthDataPoints[networthDataPoints.length - 1];
+
+
+            document.getElementById("total-cost-text").innerHTML = "Total Cost: " + finalDataPoint.totalCost.toFixed(2); 
+            document.getElementById("total-value-text").innerHTML = "Value as of today: " + finalDataPoint.totalValue.toFixed(2); 
+
+        }
+
+    </script>
+
+</asp:Content>
