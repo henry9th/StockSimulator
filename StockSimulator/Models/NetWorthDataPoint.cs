@@ -13,6 +13,8 @@ namespace StockSimulator.Models
         public double subValue { get; set; }
         public double subCost { get; set; }
         public double differenceFromCost { get; set; }
+        public double dividendEarned { get; set; }
+        public double valueOfSharesFromDividend { get; set; }
         public string note { get; set; }
     }
 }

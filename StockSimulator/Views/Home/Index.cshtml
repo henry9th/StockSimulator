@@ -13,11 +13,18 @@
             </p>
         </div>
 
-        <h6>#&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;$ </h6> 
-        
+        <h6>#&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;$ </h6>
+
         <label class="switch">
             <input id="input-checkbox" type="checkbox" onclick="updateInputHeader();">
             <span class="slider"></span>
+        </label>
+
+        <h6>Reinvest Dividends?</h6>
+
+        <label class="switch">
+            <input id="input-checkbox-reinvest" type="checkbox">
+            <span class="slider" id="reinvest-slider"></span>
         </label>
 
         <div class="row" id="input-rows">
@@ -57,8 +64,11 @@
         <div id="result-div">
             <h3 id="total-cost-text"></h3>
             <h3 id="total-value-text"></h3>
+            <h3 id="dividend-earned-text"></h3>
 
-            <div id="chartContainer" style="height: 500px; width: 100%;"></div>
+            <div id="chartContainer1" class="chart" style="height: 500px; width: 100%;"></div>
+            <div id="chartContainer2" class="chart" style="height: 500px; width: 100%;"></div>
+
             <script src="https://canvasjs.com/assets/script/jquery-1.11.1.min.js"></script>
             <script src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
         </div>
@@ -134,12 +144,13 @@
             console.log("inputData:", inputData);
 
             var moneyFormat = document.getElementById("input-checkbox").checked;
+            var reinvestDividends = document.getElementById("input-checkbox-reinvest").checked;
 
             $.ajax({
                 url: "@Url.Action("Calculate")",
                 dataType: "json",
                 type: 'POST',
-                data: { inputData: JSON.stringify(inputData), targetDate: targetDate, moneyFormat: moneyFormat },
+                data: { inputData: JSON.stringify(inputData), targetDate: targetDate, moneyFormat: moneyFormat, reinvestDividends: reinvestDividends },
                 success: function (response) {
                     displayResults(response.result);
                 },
@@ -160,14 +171,22 @@
 
             var finalDataPoint = networthDataPoints[networthDataPoints.length - 1];
 
+            console.log("networthDataPoints:", networthDataPoints);
 
             document.getElementById("total-cost-text").innerHTML = "Total Cost: " + finalDataPoint.totalCost.toFixed(2);
             document.getElementById("total-value-text").innerHTML = "Value as of today: " + finalDataPoint.totalValue.toFixed(2);
 
-            var dataPoints = [];
+            if (finalDataPoint.dividendEarned > 0) {
+                document.getElementById("dividend-earned-text").innerHTML = "Earnings from Dividends: " + finalDataPoint.dividendEarned.toFixed(2);
+            } else {
+                document.getElementById("dividend-earned-text").innerHTML = "Value from shares bought with Dividends: " + finalDataPoint.valueOfSharesFromDividend.toFixed(2);
+            }
+
+
+            var dataPointsForNetworth = [];
 
             networthDataPoints.forEach(function (dataPoint) {
-                dataPoints.push({ x: new Date(dataPoint.date), y: dataPoint.totalValue});
+                dataPointsForNetworth.push({ x: new Date(dataPoint.date), y: dataPoint.totalValue});
             });
 
             var options =  {
@@ -190,13 +209,53 @@
 	            data: [{
 		            type: "spline",
 		            yValueFormatString: "$#,###.##",
-		            dataPoints: dataPoints
+		            dataPoints: dataPointsForNetworth
 	            }]
             };
 
-            var chart = new CanvasJS.Chart("chartContainer", options);
+            var networthOverTimeChart = new CanvasJS.Chart("chartContainer1", options);
 
-            chart.render();
+            networthOverTimeChart.render();
+
+            var earningsDataPoints = [];
+            var totalEarnings = finalDataPoint.totalValue - finalDataPoint.totalCost;
+
+            if (totalEarnings > 0) {
+                // if dividends were re-invested
+                if (finalDataPoint.dividendEarned > 0) {
+                    var earningsFromStockGrowth = totalEarnings - finalDataPoint.dividendEarned;
+                    earningsDataPoints.push({ y: (earningsFromStockGrowth / totalEarnings) * 100, label: "Stock Value Growth" })
+                    earningsDataPoints.push({ y: (finalDataPoint.dividendEarned / totalEarnings) * 100, label: "Dividends Earned" })
+                } else {
+                    var earningsFromStockGrowthExcludingDividends = totalEarnings - finalDataPoint.valueOfSharesFromDividend;
+                    earningsDataPoints.push({ y: (earningsFromStockGrowthExcludingDividends / totalEarnings) * 100, label: "Stock Value Growth" })
+                    earningsDataPoints.push({ y: (finalDataPoint.valueOfSharesFromDividend / totalEarnings) * 100, label: "Shares from dividends" })
+                }
+
+                options = {
+                    animationEnabled: true,
+                    theme: "dark2",
+                    title: {
+                        text: "Earning Source",
+                        fontSize: 30,
+                        fontFamily: "Calibri"
+                    },
+                    data: [{
+                        type: "pie",
+                        startAngle: 40,
+                        toolTipContent: "<b>{label}</b>: {y}%",
+                        showInLegend: "true",
+                        legendText: "{label}",
+                        indexLabelFontSize: 16,
+                        indexLabel: "{label} - {y}%",
+                        dataPoints: earningsDataPoints
+                    }]
+                };
+
+                var earningSource = new CanvasJS.Chart("chartContainer2", options);
+
+                earningSource.render();
+            }
 
         }
 

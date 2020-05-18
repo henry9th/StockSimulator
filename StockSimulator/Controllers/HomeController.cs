@@ -55,7 +55,7 @@ namespace StockSimulator.Controllers
             return uniqueSymbols;
         }
 
-        public IList<Stock> getPriceDataAndCombineWithInput(string symbol, IList<Stock> inputDataList, Dictionary<string, DateTime> uniqueSymbols, bool moneyFormat)
+        public IList<Stock> getPriceDataAndCombineWithInput(string symbol, IList<Stock> inputDataList, Dictionary<string, DateTime> uniqueSymbols, bool moneyFormat, bool reinvestDividends)
         {
             IEnumerable<JToken> rawData = getAVStockInfo(symbol).Reverse();
 
@@ -70,19 +70,23 @@ namespace StockSimulator.Controllers
 
             }).Select(data =>
             {
+                var price = data.First.Value<double>("5. adjusted close");
+                var dividend = data.First.Value<double>("7. dividend amount");
+                var sharesBoughtWithDividend = 0;
+
                 foreach (Stock d in inputDataList)
                 {
                     // if the stock object already exists in our input array, just add the price and return that 
                     if (DateTime.Parse(((JProperty)data).Name) == d.date && symbol == d.symbol)
                     {
-                        var price = data.First.Value<double>("4. close");
-
                         if (moneyFormat)
                         {
                             var money = d.sharesBought;
-                            int actualSharesBought = (int)(money / price);
+                            double actualSharesBought = (money / price);
                             d.sharesBought = actualSharesBought;
                         }
+
+                        inputDataList.Remove(d);
 
                         return new Stock
                         {
@@ -90,7 +94,9 @@ namespace StockSimulator.Controllers
                             sharesBought = d.sharesBought,
                             date = DateTime.Parse(((JProperty)data).Name),
                             price = price,
-                            moneyFormat = moneyFormat
+                            moneyFormat = moneyFormat,
+                            dividend = dividend,
+                            sharesBoughtWithDividend = 0
                         };
                     }
                 }
@@ -101,8 +107,10 @@ namespace StockSimulator.Controllers
                     symbol = symbol,
                     sharesBought = 0,
                     date = DateTime.Parse(((JProperty)data).Name),
-                    price = data.First.Value<double>("4. close"),
-                    moneyFormat = moneyFormat
+                    price = price,
+                    dividend = dividend,
+                    moneyFormat = moneyFormat,
+                    sharesBoughtWithDividend = 0
                 };
             }).ToList();
 
@@ -127,7 +135,7 @@ namespace StockSimulator.Controllers
                         if (moneyFormat)
                         {
                             var money = d.sharesBought;
-                            int actualSharesBought = (int)(money / stock.price);
+                            double actualSharesBought = (money / stock.price);
                             d.sharesBought = actualSharesBought;
                         }
 
@@ -140,19 +148,31 @@ namespace StockSimulator.Controllers
             }
 
             // finally populate the sharesOwned for each stock (we can't do this earlier because of how we handle leftovers) 
-            int sharesOwned = 0;
-
+            // if dividends are to be reinvested, convert the dividends field to sharesFromDividends
+            double sharesOwned = 0;
+            double totalSharesBoughtWithDividends = 0;
             for (int i = 0; i < stockData.Count; i++)
             {
                 Stock stock = stockData[i];
                 sharesOwned += stock.sharesBought;
-                stock.sharesOwned = sharesOwned; 
+                stock.sharesOwned = sharesOwned;
+
+                if (reinvestDividends && stock.dividend > 0)
+                {
+                    double dividendMoney = stock.dividend * stock.sharesOwned;
+                    double sharesBoughtWithDividends = dividendMoney / stock.price;
+                    totalSharesBoughtWithDividends += sharesBoughtWithDividends;
+
+                    stock.dividend = 0;
+                }
+
+                stock.sharesBoughtWithDividend = totalSharesBoughtWithDividends;
             }
 
             return stockData;
         }
 
-        public IEnumerable<NetWorthDataPoint> getNetworthDataPoints(IList<IList<Stock>> allStockPriceData)
+        public IEnumerable<NetWorthDataPoint> getNetworthDataPoints(IList<IList<Stock>> allStockPriceData, bool reinvestDividends)
         {
             // note that each list of stock information should be sorted from newest date to old 
 
@@ -170,13 +190,14 @@ namespace StockSimulator.Controllers
 
             double totalCost = 0;
             double totalValue = 0;
+            double dividendsEarned = 0;
+            double totalValueOfSharesFromDividends = 0;
 
             int finishCount = 0;
             List<List<Stock>> copyAllStockPriceData = allStockPriceData.Select(list =>
             {
                 return new List<Stock>(list);
             }).ToList();
-
 
 
             // For each day 
@@ -206,7 +227,17 @@ namespace StockSimulator.Controllers
                             copyAllStockPriceData[i].RemoveAt(0); // poll the element 
 
                             subCost += stockData.sharesBought * stockData.price;
-                            subValue += stockData.sharesOwned * stockData.price; 
+
+                            if (reinvestDividends)
+                            {
+                                totalValueOfSharesFromDividends = (stockData.sharesBoughtWithDividend * stockData.price);
+                                subValue += (stockData.sharesOwned * stockData.price) + totalValueOfSharesFromDividends;
+                            } else
+                            {
+                                dividendsEarned += stockData.dividend * stockData.sharesOwned;
+                                subValue += (stockData.sharesOwned * stockData.price) + dividendsEarned;
+                            }
+
                         }
                     }   
                 }
@@ -228,6 +259,8 @@ namespace StockSimulator.Controllers
                         subValue = subValue,
                         subCost = subCost, 
                         differenceFromCost = totalValue - totalCost, 
+                        dividendEarned = dividendsEarned,
+                        valueOfSharesFromDividend = totalValueOfSharesFromDividends,
                         note = "not implemented yet"
                     });
                 }
@@ -238,24 +271,9 @@ namespace StockSimulator.Controllers
             return networthDataPoints;
         }
 
-        // transforms provided data so numshares represents not the money but the money/share price
-        //public void convertNumsharesFromMoney(IList<IList<Stock>> allStockPriceData)
-        //{
-        //    foreach (IList<Stock> stockPriceData in allStockPriceData)
-        //    {
-        //        for (int i = 0; i < stockPriceData.Count; i++)
-        //        {
-        //            Stock stock = stockPriceData[i];
-        //            if (stock.sharesBought > 0)
-        //            {
-
-        //            }
-        //        }
-        //    }
-        //}
 
         [HttpPost]
-        public IActionResult Calculate(string inputData, DateTime targetDate, bool moneyFormat)
+        public IActionResult Calculate(string inputData, DateTime targetDate, bool moneyFormat, bool reinvestDividends)
         {
 
             var inputDataList = JsonConvert.DeserializeObject<List<Stock>>(inputData);
@@ -266,10 +284,10 @@ namespace StockSimulator.Controllers
 
             foreach (string symbol in uniqueSymbols.Keys)
             {
-                allStockPriceData.Add(getPriceDataAndCombineWithInput(symbol, inputDataList, uniqueSymbols, moneyFormat).ToList());
+                allStockPriceData.Add(getPriceDataAndCombineWithInput(symbol, inputDataList, uniqueSymbols, moneyFormat, reinvestDividends).ToList());
             }
 
-            IEnumerable<NetWorthDataPoint> networthDataPoints = getNetworthDataPoints(allStockPriceData);
+            IEnumerable<NetWorthDataPoint> networthDataPoints = getNetworthDataPoints(allStockPriceData, reinvestDividends);
 
             PortfolioResult result = new PortfolioResult
             {
@@ -288,7 +306,7 @@ namespace StockSimulator.Controllers
         public IEnumerable<JToken> getAVStockInfo(string symbol)
         {     
             const string URL = "https://www.alphavantage.co/query";
-            string urlParameters = "?function=TIME_SERIES_DAILY&apikey=CSB992QM4L7LLVY5&outputsize=full&symbol=" + symbol;
+            string urlParameters = "?function=TIME_SERIES_DAILY_ADJUSTED&apikey=CSB992QM4L7LLVY5&outputsize=full&symbol=" + symbol;
 
             HttpClient client = new HttpClient();
             client.BaseAddress = new Uri(URL);
