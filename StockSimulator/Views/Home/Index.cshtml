@@ -9,47 +9,57 @@
         <div class="jumbotron">
             <h1>Investment Calculator</h1>
             <p class="lead">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur eget dictum leo. Suspendisse potenti. Nunc tempor viverra mollis. Mauris posuere ullamcorper est, at cursus nibh tincidunt sit amet. Nam quam tellus, posuere vel porta eget, ultrices varius magna. Nam sollicitudin at sem vel aliquet. In sit amet posuere neque. Integer laoreet, dolor non posuere hendrerit, velit urna vehicula libero, vitae fringilla quam nulla eleifend augue.
+                Some notes about how this works: <br />
+                <ul>
+                    <li>Frequency is in days</li>
+                    <li>You can choose to input either the number of shares or an amount of money for buying the shares (See the toggle switch below)</li>
+                    <li>You can choose if you would like to reinvest earned dividends and buy shares on the same day</li>
+                    <li>If you enter a date where the market is not open or is before IPO, then it will get the next available date </li>
+                    <li>If a frequency of 1 is entered, then weekend days would be carried over so it would buy 3 shares on Monday</li>
+                    <li>The pie chart is only generated when there is positive growth (current value > cost) </li>
+                    <li>Errors may occur due to API call limits, otherwise, it's on me</li>
+                </ul>
             </p>
         </div>
 
-        <h6>#&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;$ </h6>
+        <div class="switch-div">
+            <h6 class="switch-headers">#&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;$ </h6>
 
-        <label class="switch">
-            <input id="input-checkbox" type="checkbox" onclick="updateInputHeader();">
-            <span class="slider"></span>
-        </label>
+            <label class="switch">
+                <input id="input-checkbox" type="checkbox" onclick="updateInputHeader();">
+                <span class="slider"></span>
+            </label>
+        </div>
 
-        <h6>Reinvest Dividends?</h6>
+        <div class="switch-div">
+            <h6 class="switch-headers">Reinvest Dividends?</h6>
 
-        <label class="switch">
-            <input id="input-checkbox-reinvest" type="checkbox">
-            <span class="slider" id="reinvest-slider"></span>
-        </label>
+            <label class="switch">
+                <input id="input-checkbox-reinvest" type="checkbox">
+                <span class="slider" id="reinvest-slider"></span>
+            </label>
+        </div>
 
-        <div class="row" id="input-rows">
+        <div class="row" id="inputs-all-rows">
 
-            <div class="row input-row">
-                <div class="col-md-4" id="stock-inputs">
-                    <h5>Stock Symbol</h5>
-                    <input type="text" />
-                </div>
-
-                <div class="col-md-4" id="numShares-inputs">
-                    <h5 id="input-type-text"># of Shares</h5>
-                    <input type="number" min="0" />
-                </div>
-
-                <div class="col-md-3" id="date-inputs">
-                    <h5>Date</h5>
-                    <input type="date" />
-                </div>
+            <div class="row">
+                <h5 class="header-text" id="stock-text">Stock Symbol</h5>
+                <h5 class="header-text" id="input-type-text"># of Shares</h5>
+                <h5 class="header-text" id="date-text">Date</h5>
+                <h5 class="header-text">Frequency</h5>
             </div>
+
+            <div class="inputs row">
+                @*<input class="stock-inputs" type="text" />
+                <input class="numShares-inputs" type="number" min="0" />
+                <input class="date-inputs" type="date" />*@
+            </div>
+
         </div>
 
 
 
-        <div class="row" ">
+        <div class="row">
             <div id="submit-options-div" class="col-md-3">
                 <button class="" id="add-new-row-button" onclick="addNewRow(); return false">+ New row</button> <br />
 
@@ -76,188 +86,241 @@
 
         <script>
 
-        document.getElementById("result-date").value = (new Date()).toISOString().substr(0, 10);
+            addNewRow();
 
-            function updateInputHeader() {
-                if (document.getElementById("input-checkbox").checked) {
-                    document.getElementById("input-type-text").innerHTML = "$ (USD)"
-                } else {
-                    document.getElementById("input-type-text").innerHTML = "# of Shares"
+            document.getElementById("result-date").value = (new Date()).toISOString().substr(0, 10);
+
+                function updateInputHeader() {
+                    if (document.getElementById("input-checkbox").checked) {
+                        document.getElementById("input-type-text").innerHTML = "$ (USD)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+                    } else {
+                        document.getElementById("input-type-text").innerHTML = "# of Shares"
+                    }
                 }
+
+            // Adding a new row for inputting stock purchase
+            function addNewRow() {
+                var row = document.createElement("div");
+                row.setAttribute("class", "inputs row");
+
+                var stockInput = document.createElement("input");
+                stockInput.setAttribute("type", "text");
+                stockInput.className = "stock-inputs";
+
+                var numSharesInput = document.createElement("input");
+                numSharesInput.setAttribute("type", "number");
+                numSharesInput.setAttribute("min", "0");
+                numSharesInput.className = "numShares-inputs";
+
+                var dateInput = document.createElement("input");
+                dateInput.setAttribute("type", "date");
+                dateInput.className = "date-inputs";
+
+                var frequencyInput = document.createElement("input");
+                frequencyInput.setAttribute("type", "number");
+                frequencyInput.className = "frequency-inputs";
+                frequencyInput.value = 0;
+
+                var removeButton = document.createElement("button");
+                removeButton.innerHTML = "X Remove";
+                removeButton.className = "remove-button";
+                removeButton.onclick = () => {
+                    document.getElementById("inputs-all-rows").removeChild(row);
+                }
+
+                row.appendChild(stockInput);
+                row.appendChild(numSharesInput);
+                row.appendChild(dateInput);
+                row.appendChild(frequencyInput);
+                row.appendChild(removeButton);
+
+                document.getElementById("inputs-all-rows").appendChild(row);
             }
 
-        // Adding a new row for inputting stock purchase
-        function addNewRow() {
-            var stockInputsDiv = document.getElementById("stock-inputs");
-            var numSharesDiv = document.getElementById("numShares-inputs");
-            var dateDiv = document.getElementById("date-inputs");
+            function isValid(str){
+             return !/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g.test(str);
+            }
 
-            var stockInput = document.createElement("input");
-            stockInput.setAttribute("type", "text");
+            // Organize the data before sending it to the controller
+            function calculatePortfolio() {
+                var stockInputs = $(".stock-inputs");
+                var numSharesInputs = $(".numShares-inputs");
+                var dateInputs = $(".date-inputs");
+                var frequencyInputs = $(".frequency-inputs");
 
-            var numSharesInput = document.createElement("input");
-            numSharesInput.setAttribute("type", "number");
-            numSharesInput.setAttribute("min", "0");
+                var targetDate = document.getElementById("result-date").value;
 
-            var dateInput = document.createElement("input");
-            dateInput.setAttribute("type", "date");
+                var count = stockInputs.length;
 
-            stockInputsDiv.appendChild(stockInput);
-            numSharesDiv.appendChild(numSharesInput);
-            dateDiv.appendChild(dateInput);
-        }
+                let inputData = [];
 
-        // Organize the data before sending it to the controller
-        function calculatePortfolio() {
-            var stockInputs = $("#stock-inputs input");
-            var numSharesInputs = $("#numShares-inputs input");
-            var dateInputs = $("#date-inputs input");
+                // Organize each row data into each dict
+                for (i = 0; i < count; i++) {
+                    var symbol = stockInputs[i].value.trim();
+                    var numShares = numSharesInputs[i].value.trim();
+                    var date = dateInputs[i].value;
+                    var frequency = frequencyInputs[i].value;
 
-            var targetDate = document.getElementById("result-date").value;
+                    var today = new Date();
 
-            var count = stockInputs.length;
+                    if (symbol == "" || !isValid(symbol) || isNaN(numShares) || numShares < 0 || date == "" || isNaN(frequency) || parseDate(date) > today) {
+                        alert("Unallowed value on row: " + (i + 1));
+                        return;
+                    }
 
-            let inputData = [];
+                    inputData.push({
+                        symbol: symbol,
+                        sharesBought: numShares,
+                        date: date
+                    });
 
-            // Organize each row data into each dict
-            for (i = 0; i < count; i++) {
-                var symbol = stockInputs[i].value;
-                var numShares = numSharesInputs[i].value;
-                var date = dateInputs[i].value;
+                    frequency = parseInt(frequency);
 
-                console.log(symbol);
-                console.log(numShares);
-                console.log(date);
+                    if (frequency > 0) {
+                        var indexDate = parseDate(date);
+                        indexDate.setDate(indexDate.getDate() + frequency);
 
-                if (symbol == "" || isNaN(numShares) || numShares < 0 || date == "") {
-                    alert("Unallowed value on row: " + (i + 1));
-                    return;
+                        while (indexDate.getTime() <= today.getTime()) {
+                            var dateString = indexDate.toISOString();
+                            dateString = dateString.substring(0, dateString.indexOf("T"));
+
+                            inputData.push({
+                                symbol: symbol,
+                                sharesBought: numShares,
+                                date: dateString
+                            });
+
+                            indexDate.setDate(indexDate.getDate() + frequency);
+                        }
+                    }
+                }
+                console.log("inputData:", inputData);
+
+                var moneyFormat = document.getElementById("input-checkbox").checked;
+                var reinvestDividends = document.getElementById("input-checkbox-reinvest").checked;
+
+                $.ajax({
+                    url: "@Url.Action("Calculate")",
+                    dataType: "json",
+                    type: 'POST',
+                    data: { inputData: JSON.stringify(inputData), targetDate: targetDate, moneyFormat: moneyFormat, reinvestDividends: reinvestDividends },
+                    success: function (response) {
+                        displayResults(response.result);
+                    },
+                    error: function (error) {
+                        console.log(error);
+                        alert("Error !!");
+                        }
+                });
+            }
+
+            function displayResults(result) {
+
+                var formattedResult = JSON.parse(result);
+
+                var allStockPriceData = formattedResult.allStockPriceData;
+
+                var networthDataPoints = formattedResult.networthDataPoints;
+
+                var finalDataPoint = networthDataPoints[networthDataPoints.length - 1];
+
+                console.log("networthDataPoints:", networthDataPoints);
+
+                document.getElementById("total-cost-text").innerHTML = "Total Cost: $" + numberWithCommas(finalDataPoint.totalCost.toFixed(2));
+                document.getElementById("total-value-text").innerHTML = "Value as of today: $" + numberWithCommas(finalDataPoint.totalValue.toFixed(2));
+
+                if (finalDataPoint.dividendEarned > 0 && finalDataPoint.valueOfSharesFromDividend <= 0) {
+                    document.getElementById("dividend-earned-text").innerHTML = "Earnings from Dividends: $" + numberWithCommas(finalDataPoint.dividendEarned.toFixed(2));
+                } else {
+                    document.getElementById("dividend-earned-text").innerHTML = "Value from shares bought with Dividends: $" + numberWithCommas(finalDataPoint.valueOfSharesFromDividend.toFixed(2));
                 }
 
-                inputData.push({
-                    symbol: symbol,
-                    sharesBought: numShares,
-                    date: date
+
+                var dataPointsForNetworth = [];
+
+                networthDataPoints.forEach(function (dataPoint) {
+                    dataPointsForNetworth.push({ x: new Date(dataPoint.date), y: dataPoint.totalValue});
                 });
 
-            }
-            console.log("inputData:", inputData);
-
-            var moneyFormat = document.getElementById("input-checkbox").checked;
-            var reinvestDividends = document.getElementById("input-checkbox-reinvest").checked;
-
-            $.ajax({
-                url: "@Url.Action("Calculate")",
-                dataType: "json",
-                type: 'POST',
-                data: { inputData: JSON.stringify(inputData), targetDate: targetDate, moneyFormat: moneyFormat, reinvestDividends: reinvestDividends },
-                success: function (response) {
-                    displayResults(response.result);
-                },
-                error: function (error) {
-                    console.log(error);
-                    alert("Error !!");
-                    }
-            });
-        }
-
-        function displayResults(result) {
-
-            var formattedResult = JSON.parse(result);
-
-            var allStockPriceData = formattedResult.allStockPriceData;
-
-            var networthDataPoints = formattedResult.networthDataPoints;
-
-            var finalDataPoint = networthDataPoints[networthDataPoints.length - 1];
-
-            console.log("networthDataPoints:", networthDataPoints);
-
-            document.getElementById("total-cost-text").innerHTML = "Total Cost: " + finalDataPoint.totalCost.toFixed(2);
-            document.getElementById("total-value-text").innerHTML = "Value as of today: " + finalDataPoint.totalValue.toFixed(2);
-
-            if (finalDataPoint.dividendEarned > 0) {
-                document.getElementById("dividend-earned-text").innerHTML = "Earnings from Dividends: " + finalDataPoint.dividendEarned.toFixed(2);
-            } else {
-                document.getElementById("dividend-earned-text").innerHTML = "Value from shares bought with Dividends: " + finalDataPoint.valueOfSharesFromDividend.toFixed(2);
-            }
-
-
-            var dataPointsForNetworth = [];
-
-            networthDataPoints.forEach(function (dataPoint) {
-                dataPointsForNetworth.push({ x: new Date(dataPoint.date), y: dataPoint.totalValue});
-            });
-
-            var options =  {
-	            animationEnabled: true,
-	            theme: "dark2",
-	            title: {
-                    text: "Portfolio Value",
-                    fontSize: 30,
-                    fontFamily: "Calibri"
-	            },
-	            axisX: {
-		            valueFormatString: "DD MMM YYYY",
-	            },
-	            axisY: {
-		            title: "USD",
-		            titleFontSize: 24,
-                    includeZero: false,
-                    fontFamily: "Calibri"
-	            },
-	            data: [{
-		            type: "spline",
-		            yValueFormatString: "$#,###.##",
-		            dataPoints: dataPointsForNetworth
-	            }]
-            };
-
-            var networthOverTimeChart = new CanvasJS.Chart("chartContainer1", options);
-
-            networthOverTimeChart.render();
-
-            var earningsDataPoints = [];
-            var totalEarnings = finalDataPoint.totalValue - finalDataPoint.totalCost;
-
-            if (totalEarnings > 0) {
-                // if dividends were re-invested
-                if (finalDataPoint.dividendEarned > 0) {
-                    var earningsFromStockGrowth = totalEarnings - finalDataPoint.dividendEarned;
-                    earningsDataPoints.push({ y: (earningsFromStockGrowth / totalEarnings) * 100, label: "Stock Value Growth" })
-                    earningsDataPoints.push({ y: (finalDataPoint.dividendEarned / totalEarnings) * 100, label: "Dividends Earned" })
-                } else {
-                    var earningsFromStockGrowthExcludingDividends = totalEarnings - finalDataPoint.valueOfSharesFromDividend;
-                    earningsDataPoints.push({ y: (earningsFromStockGrowthExcludingDividends / totalEarnings) * 100, label: "Stock Value Growth" })
-                    earningsDataPoints.push({ y: (finalDataPoint.valueOfSharesFromDividend / totalEarnings) * 100, label: "Shares from dividends" })
-                }
-
-                options = {
-                    animationEnabled: true,
-                    theme: "dark2",
-                    title: {
-                        text: "Earning Source",
+                var options =  {
+	                animationEnabled: true,
+	                theme: "dark2",
+	                title: {
+                        text: "Portfolio Value",
                         fontSize: 30,
                         fontFamily: "Calibri"
-                    },
-                    data: [{
-                        type: "pie",
-                        startAngle: 40,
-                        toolTipContent: "<b>{label}</b>: {y}%",
-                        showInLegend: "true",
-                        legendText: "{label}",
-                        indexLabelFontSize: 16,
-                        indexLabel: "{label} - {y}%",
-                        dataPoints: earningsDataPoints
-                    }]
+	                },
+	                axisX: {
+		                valueFormatString: "DD MMM YYYY",
+	                },
+	                axisY: {
+		                title: "USD",
+		                titleFontSize: 24,
+                        includeZero: false,
+                        fontFamily: "Calibri"
+	                },
+	                data: [{
+		                type: "spline",
+		                yValueFormatString: "$#,###.##",
+		                dataPoints: dataPointsForNetworth
+	                }]
                 };
 
-                var earningSource = new CanvasJS.Chart("chartContainer2", options);
+                var networthOverTimeChart = new CanvasJS.Chart("chartContainer1", options);
 
-                earningSource.render();
+                networthOverTimeChart.render();
+
+                var earningsDataPoints = [];
+                var totalEarnings = finalDataPoint.totalValue - finalDataPoint.totalCost;
+
+                if (totalEarnings > 0) {
+                    // if dividends were re-invested
+                    if (finalDataPoint.dividendEarned > 0) {
+                        var earningsFromStockGrowth = totalEarnings - finalDataPoint.dividendEarned;
+                        earningsDataPoints.push({ y: (earningsFromStockGrowth / totalEarnings) * 100, label: "Stock Value Growth" })
+                        earningsDataPoints.push({ y: (finalDataPoint.dividendEarned / totalEarnings) * 100, label: "Dividends Earned" })
+                    } else {
+                        var earningsFromStockGrowthExcludingDividends = totalEarnings - finalDataPoint.valueOfSharesFromDividend;
+                        earningsDataPoints.push({ y: (earningsFromStockGrowthExcludingDividends / totalEarnings) * 100, label: "Stock Value Growth" })
+                        earningsDataPoints.push({ y: (finalDataPoint.valueOfSharesFromDividend / totalEarnings) * 100, label: "Shares from dividends" })
+                    }
+
+                    options = {
+                        animationEnabled: true,
+                        theme: "dark2",
+                        title: {
+                            text: "Value Growth Source",
+                            fontSize: 30,
+                            fontFamily: "Calibri"
+                        },
+                        data: [{
+                            type: "pie",
+                            startAngle: 40,
+                            toolTipContent: "<b>{label}</b>: {y}%",
+                            showInLegend: "true",
+                            legendText: "{label}",
+                            indexLabelFontSize: 16,
+                            indexLabel: "{label} - {y}%",
+                            dataPoints: earningsDataPoints
+                        }]
+                    };
+
+                    var earningSource = new CanvasJS.Chart("chartContainer2", options);
+
+                    earningSource.render();
+                }
+
             }
 
-        }
+            function parseDate(s) {
+                var b = s.split(/\D/);
+                return new Date(b[0], --b[1], b[2]);
+            }
+
+            function numberWithCommas(x) {
+                return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            }
+
 
         </script>
 

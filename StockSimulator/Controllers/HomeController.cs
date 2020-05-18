@@ -121,7 +121,7 @@ namespace StockSimulator.Controllers
             }).ToList();
 
             // handle the leftover dates (dates that do not fall on a day that the market was open)
-            while (relevantInput.Count() > 0)
+            while (relevantInput.Count() > 0 && relevantInput.First().date.CompareTo(DateTime.Today) < 0)
             {
                 Stock d = relevantInput.First();
                 d.date = d.date.AddDays(1);
