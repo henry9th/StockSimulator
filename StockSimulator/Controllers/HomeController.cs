@@ -191,7 +191,6 @@ namespace StockSimulator.Controllers
             double totalCost = 0;
             double totalValue = 0;
             double dividendsEarned = 0;
-            double totalValueOfSharesFromDividends = 0;
 
             int finishCount = 0;
             List<List<Stock>> copyAllStockPriceData = allStockPriceData.Select(list =>
@@ -203,6 +202,8 @@ namespace StockSimulator.Controllers
             // For each day 
             while (finishCount != allStockPriceData.Count)
             {
+                double totalValueOfSharesFromDividends = 0;
+
                 double subCost = 0;
                 double subValue = 0;
 
@@ -230,12 +231,12 @@ namespace StockSimulator.Controllers
 
                             if (reinvestDividends)
                             {
-                                totalValueOfSharesFromDividends = (stockData.sharesBoughtWithDividend * stockData.price);
+                                totalValueOfSharesFromDividends += (stockData.sharesBoughtWithDividend * stockData.price);
                                 subValue += (stockData.sharesOwned * stockData.price) + totalValueOfSharesFromDividends;
                             } else
                             {
-                                dividendsEarned += stockData.dividend * stockData.sharesOwned;
-                                subValue += (stockData.sharesOwned * stockData.price) + dividendsEarned;
+                                dividendsEarned += (stockData.dividend * stockData.sharesOwned);
+                                subValue += (stockData.sharesOwned * stockData.price);
                             }
 
                         }
@@ -247,7 +248,7 @@ namespace StockSimulator.Controllers
                 // value of shares owned today 
                 double temp = subValue; 
                 subValue = temp - totalValue;
-                totalValue = temp;
+                totalValue = temp + dividendsEarned;
 
                 if (marketOpen)
                 {

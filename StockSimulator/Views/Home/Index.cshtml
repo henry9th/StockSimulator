@@ -78,6 +78,7 @@
 
             <div id="chartContainer1" class="chart" style="height: 500px; width: 100%;"></div>
             <div id="chartContainer2" class="chart" style="height: 500px; width: 100%;"></div>
+            <div id="chartContainer3" class="chart" style="height: 500px; width: 100%;"></div>
 
             <script src="https://canvasjs.com/assets/script/jquery-1.11.1.min.js"></script>
             <script src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
@@ -225,6 +226,7 @@
                 var finalDataPoint = networthDataPoints[networthDataPoints.length - 1];
 
                 console.log("networthDataPoints:", networthDataPoints);
+                console.log("allStockPriceData:", allStockPriceData);
 
                 document.getElementById("total-cost-text").innerHTML = "Total Cost: $" + numberWithCommas(finalDataPoint.totalCost.toFixed(2));
                 document.getElementById("total-value-text").innerHTML = "Value as of today: $" + numberWithCommas(finalDataPoint.totalValue.toFixed(2));
@@ -239,7 +241,7 @@
                 var dataPointsForNetworth = [];
 
                 networthDataPoints.forEach(function (dataPoint) {
-                    dataPointsForNetworth.push({ x: new Date(dataPoint.date), y: dataPoint.totalValue});
+                    dataPointsForNetworth.push({ x: new Date(dataPoint.date), y: dataPoint.totalValue });
                 });
 
                 var options =  {
@@ -267,22 +269,68 @@
                 };
 
                 var networthOverTimeChart = new CanvasJS.Chart("chartContainer1", options);
-
                 networthOverTimeChart.render();
 
-                var earningsDataPoints = [];
-                var totalEarnings = finalDataPoint.totalValue - finalDataPoint.totalCost;
+                var sharesDataPoints = [];
+                var symbolsAndValue = [];
 
+                for (var i = 0; i < allStockPriceData.length; i++) {
+                    var dataForStock = allStockPriceData[i];
+                    var resultStock = dataForStock[dataForStock.length - 1];
+                    var totalValueOfStock = resultStock.sharesOwned * resultStock.price;
+
+                    symbolsAndValue.push({
+                        symbol: resultStock.symbol,
+                        totalValueOfStock: totalValueOfStock,
+                        numShares: resultStock.sharesOwned
+                    });
+                }
+
+                for (var i = 0; i < symbolsAndValue.length; i++) {
+                    sharesDataPoints.push({ y: ((symbolsAndValue[i].totalValueOfStock / finalDataPoint.totalValue) * 100).toFixed(2), totalValue: symbolsAndValue[i].totalValueOfStock.toFixed(2), label: symbolsAndValue[i].symbol, numShares: symbolsAndValue[i].numShares.toFixed(2) });
+                }
+
+                if (finalDataPoint.dividendEarned > 0) {
+                    sharesDataPoints.push({ y: ((finalDataPoint.dividendEarned / finalDataPoint.totalValue) * 100).toFixed(2), totalValue: finalDataPoint.dividendEarned.toFixed(2), label: "dividends", numShares: 0 });
+                }
+
+                options = {
+                    animationEnabled: true,
+                    theme: "dark2",
+                    title: {
+                        text: "Shares Distribution (Value)",
+                        fontSize: 30,
+                        fontFamily: "Calibri"
+                    },
+                    data: [{
+                        type: "pie",
+                        startAngle: 40,
+                        toolTipContent: "<b>{label}</b>: ${totalValue} | {numShares} shares",
+                        showInLegend: "false",
+                        legendText: "{label}",
+                        indexLabelFontSize: 16,
+                        indexLabel: "{label} - {y}%",
+                        dataPoints: sharesDataPoints
+                    }]
+                };
+
+                var sharesDistributionChart = new CanvasJS.Chart("chartContainer2", options);
+                sharesDistributionChart.render();
+
+
+                var totalEarnings = finalDataPoint.totalValue - finalDataPoint.totalCost;
                 if (totalEarnings > 0) {
+                    var earningsDataPoints = [];
+
                     // if dividends were re-invested
                     if (finalDataPoint.dividendEarned > 0) {
                         var earningsFromStockGrowth = totalEarnings - finalDataPoint.dividendEarned;
-                        earningsDataPoints.push({ y: (earningsFromStockGrowth / totalEarnings) * 100, label: "Stock Value Growth" })
-                        earningsDataPoints.push({ y: (finalDataPoint.dividendEarned / totalEarnings) * 100, label: "Dividends Earned" })
+                        earningsDataPoints.push({ y: ((earningsFromStockGrowth / totalEarnings) * 100).toFixed(2), label: "Stock Value Growth" })
+                        earningsDataPoints.push({ y: ((finalDataPoint.dividendEarned / totalEarnings) * 100).toFixed(2), label: "Dividends Earned" })
                     } else {
                         var earningsFromStockGrowthExcludingDividends = totalEarnings - finalDataPoint.valueOfSharesFromDividend;
-                        earningsDataPoints.push({ y: (earningsFromStockGrowthExcludingDividends / totalEarnings) * 100, label: "Stock Value Growth" })
-                        earningsDataPoints.push({ y: (finalDataPoint.valueOfSharesFromDividend / totalEarnings) * 100, label: "Shares from dividends" })
+                        earningsDataPoints.push({ y: ((earningsFromStockGrowthExcludingDividends / totalEarnings) * 100).toFixed(2), label: "Stock Value Growth" })
+                        earningsDataPoints.push({ y: ((finalDataPoint.valueOfSharesFromDividend / totalEarnings) * 100).toFixed(2), label: "Shares from dividends" })
                     }
 
                     options = {
@@ -305,11 +353,10 @@
                         }]
                     };
 
-                    var earningSource = new CanvasJS.Chart("chartContainer2", options);
+                    var earningSourceChart = new CanvasJS.Chart("chartContainer3", options);
 
-                    earningSource.render();
+                    earningSourceChart.render();
                 }
-
             }
 
             function parseDate(s) {
