@@ -118,12 +118,13 @@ body {
     margin-bottom: 15px;
 }
 
-.frequency-inputs {
-    font-size: 20px;
-    width: 120px;
+.interval-inputs {
+    font-size: 16px;
+    width: 150px;
     display: inline-block;
     margin-left: 20px;
     margin-bottom: 15px;
+    height: 35px;
 }
 
 .remove-button {
@@ -246,4 +247,35 @@ input:checked + .slider:before {
 
 .chart { 
     margin-top: 50px;
+}
+
+
+.loader {
+    border: 16px solid #4CAF50; /* Light grey */
+    border-top: 16px solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    animation: spin 2s linear infinite;
+    margin: auto;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+#result-div { 
+    display: block;
+    margin-top: 100px;
+    padding-top: 50px;
+}
+
+#empty-block { 
+    height: 1000px;
 }

@@ -57,7 +57,14 @@ namespace StockSimulator.Controllers
 
         public IList<Stock> getPriceDataAndCombineWithInput(string symbol, IList<Stock> inputDataList, Dictionary<string, DateTime> uniqueSymbols, bool moneyFormat, bool reinvestDividends)
         {
-            IEnumerable<JToken> rawData = getAVStockInfo(symbol).Reverse();
+            IEnumerable<JToken> rawData = getAVStockInfo(symbol);
+
+            if (rawData == null)
+            {
+                return null;
+            }
+
+            rawData = rawData.Reverse();
 
             // Only want data after oldest purchase price 
             IList<Stock> stockData = rawData.Where(data =>
@@ -72,13 +79,13 @@ namespace StockSimulator.Controllers
             {
                 var price = data.First.Value<double>("5. adjusted close");
                 var dividend = data.First.Value<double>("7. dividend amount");
-                var sharesBoughtWithDividend = 0;
 
                 foreach (Stock d in inputDataList)
                 {
                     // if the stock object already exists in our input array, just add the price and return that 
                     if (DateTime.Parse(((JProperty)data).Name) == d.date && symbol == d.symbol)
                     {
+                        // if amount was provided in money, then convert to number of shares
                         if (moneyFormat)
                         {
                             var money = d.sharesBought;
@@ -90,7 +97,7 @@ namespace StockSimulator.Controllers
 
                         return new Stock
                         {
-                            symbol = symbol,
+                            symbol = symbol.ToUpper(),
                             sharesBought = d.sharesBought,
                             date = DateTime.Parse(((JProperty)data).Name),
                             price = price,
@@ -104,7 +111,7 @@ namespace StockSimulator.Controllers
                 // else return with numShares being 0 as it will help build charts
                 return new Stock
                 {
-                    symbol = symbol,
+                    symbol = symbol.ToUpper(),
                     sharesBought = 0,
                     date = DateTime.Parse(((JProperty)data).Name),
                     price = price,
@@ -130,6 +137,11 @@ namespace StockSimulator.Controllers
                 {
                     var stock = stockData[i];
 
+                    if (stock.date.CompareTo(d.date) > 0)
+                    {
+                        break;
+                    }
+
                     if (stock.date == d.date && stock.symbol == d.symbol)
                     {
                         if (moneyFormat)
@@ -140,17 +152,16 @@ namespace StockSimulator.Controllers
                         }
 
                         relevantInput.Remove(d);
-                        stock.sharesBought = d.sharesBought;
+                        stock.sharesBought += d.sharesBought;
                     }
                 }
-
-                // error hit (date is past target date)
             }
 
             // finally populate the sharesOwned for each stock (we can't do this earlier because of how we handle leftovers) 
             // if dividends are to be reinvested, convert the dividends field to sharesFromDividends
             double sharesOwned = 0;
             double totalSharesBoughtWithDividends = 0;
+
             for (int i = 0; i < stockData.Count; i++)
             {
                 Stock stock = stockData[i];
@@ -277,7 +288,15 @@ namespace StockSimulator.Controllers
         public IActionResult Calculate(string inputData, DateTime targetDate, bool moneyFormat, bool reinvestDividends)
         {
 
-            var inputDataList = JsonConvert.DeserializeObject<List<Stock>>(inputData);
+            var inputDataList = JsonConvert.DeserializeObject<List<Stock>>(inputData).Select(stock =>
+            {
+                return new Stock
+                {
+                    date = stock.date,
+                    symbol = stock.symbol.ToUpper(),
+                    sharesBought = stock.sharesBought
+                };
+            }).ToList();
 
             var uniqueSymbols = getUniqueSymbols(inputDataList);
 
@@ -285,7 +304,20 @@ namespace StockSimulator.Controllers
 
             foreach (string symbol in uniqueSymbols.Keys)
             {
-                allStockPriceData.Add(getPriceDataAndCombineWithInput(symbol, inputDataList, uniqueSymbols, moneyFormat, reinvestDividends).ToList());
+                var data = getPriceDataAndCombineWithInput(symbol, inputDataList, uniqueSymbols, moneyFormat, reinvestDividends);
+
+                if (data == null || data.Count == 0)
+                {
+                    return Json(new
+                    {
+                        result = "Could not find symbol: " + symbol,
+                        status = false
+                    });
+                }
+
+                data = data.ToList();
+
+                allStockPriceData.Add(data);
             }
 
             IEnumerable<NetWorthDataPoint> networthDataPoints = getNetworthDataPoints(allStockPriceData, reinvestDividends);
@@ -298,12 +330,12 @@ namespace StockSimulator.Controllers
 
             return Json(new
             {
-                result = JsonConvert.SerializeObject(result)
+                result = JsonConvert.SerializeObject(result),
+                status = true
             }); 
         }
 
         // CSB992QM4L7LLVY5
-
         public IEnumerable<JToken> getAVStockInfo(string symbol)
         {     
             const string URL = "https://www.alphavantage.co/query";
@@ -319,11 +351,20 @@ namespace StockSimulator.Controllers
             HttpResponseMessage response = client.GetAsync(urlParameters).Result;  // Blocking call! Program will wait here until a response is received or a timeout occurs.
             if (response.IsSuccessStatusCode)
             {
-                // Parse the response body.
-                var dataObjects = response.Content.ReadAsAsync<JObject>().Result;  //Make sure to add a reference to System.Net.Http.Formatting.dll
-                var dataArr = dataObjects["Time Series (Daily)"].ToArray();
-            
-                return dataArr;
+                try
+                {
+                    // Parse the response body.
+                    var dataObjects = response.Content.ReadAsAsync<JObject>().Result;  //Make sure to add a reference to System.Net.Http.Formatting.dll
+
+                    var dataArr = dataObjects["Time Series (Daily)"].ToArray();
+
+                    return dataArr;
+                }
+                catch (Exception)
+                {
+                    // likely hit cause wrong symbol 
+                    return null;
+                }
             }
             else
             {
