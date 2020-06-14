@@ -70,6 +70,15 @@ body {
   line-height: 60px; /* Vertically center the text there */
 }
 
+.jumbotron {
+    box-shadow: 0 10px 9px rgba(0,0,0,0.35);
+}
+
+#input-form, #result-data {
+    padding-top: 40px;
+    padding-bottom: 40px;
+}
+
 .row {
     display: block;
 }
@@ -77,7 +86,8 @@ body {
 .switch-div {
     display: inline-block;
     width: 200px;
-    margin-bottom: 50px;
+    margin-top: 30px;
+    margin-bottom: 20px;
 }
 
 .header-text {
@@ -92,6 +102,10 @@ body {
 #date-text {
     margin-left: 40px;
     margin-right: 130px;
+}
+
+input { 
+    border-color: gray;
 }
 
 .stock-inputs {
@@ -164,7 +178,7 @@ body {
 
 #calculate-button {
     margin-left: 0;
-    margin-top: 30px;
+    margin-top: 100px;
     background-color: #4CAF50;
     box-shadow: none;
     border: none;
@@ -176,6 +190,14 @@ body {
 
     #calculate-button:hover {
     }
+
+#message { 
+    margin-left: 20px;
+    margin-top: 20px;
+    font-size: 18px;
+    display: block;
+
+}
 
 #result-div {
     margin-top: 50px;
@@ -272,8 +294,6 @@ input:checked + .slider:before {
 
 #result-div { 
     display: block;
-    margin-top: 100px;
-    padding-top: 50px;
 }
 
 #empty-block { 

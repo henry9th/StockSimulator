@@ -12,71 +12,69 @@
                 Some notes about how this works: <br />
                 <ul>
                     <li>The tool uses <i>closing</i> prices</li>
-                    <li>Interval is in days</li>
                     <li>You can choose to input either the number of shares or an amount of money for buying the shares (See the toggle switch below)</li>
                     <li>You can choose if you would like to reinvest earned dividends and buy shares on the same day</li>
                     <li>If you enter a date where the market is not open or is before IPO, then it will buy on the next available date </li>
-                    <li>If a frequency of 1 is entered, then weekend days would be carried over so it would buy 3 shares on Monday</li>
                     <li>The "Value Growth Source" pie chart is only generated when there is positive growth (current value > cost) </li>
                     <li>Errors may occur due to API call limits, otherwise, it's on me</li>
                 </ul>
             </p>
         </div>
 
-        <div class="switch-div">
-            <h6 class="switch-headers">#&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;$ </h6>
+        <div class="jumbotron" id="input-form">
+            <h1>Try it here...</h1>
 
-            <label class="switch">
-                <input id="input-checkbox" type="checkbox" onclick="updateInputHeader();" checked>
-                <span class="slider"></span>
-            </label>
-        </div>
+            <div class="switch-div">
+                <h6 class="switch-headers">#&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;$ </h6>
 
-        <div class="switch-div">
-            <h6 class="switch-headers">Reinvest Dividends?</h6>
+                <label class="switch">
+                    <input id="input-checkbox" type="checkbox" onclick="updateInputHeader();" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
 
-            <label class="switch">
-                <input id="input-checkbox-reinvest" type="checkbox">
-                <span class="slider" id="reinvest-slider"></span>
-            </label>
-        </div>
+            <div class="switch-div">
+                <h6 class="switch-headers">Reinvest Dividends?</h6>
 
-        <div class="row" id="inputs-all-rows">
+                <label class="switch">
+                    <input id="input-checkbox-reinvest" type="checkbox">
+                    <span class="slider" id="reinvest-slider"></span>
+                </label>
+            </div>
+
+            <div class="row" id="inputs-all-rows">
+
+                <div class="row">
+                    <h5 class="header-text" id="stock-text">Stock Symbol</h5>
+                    <h5 class="header-text" id="input-type-text">$ (USD)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</h5>
+                    <h5 class="header-text" id="date-text">Date</h5>
+                    <h5 class="header-text">Interval</h5>
+                </div>
+
+            </div>
+
 
             <div class="row">
-                <h5 class="header-text" id="stock-text">Stock Symbol</h5>
-                <h5 class="header-text" id="input-type-text">$ (USD)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</h5>
-                <h5 class="header-text" id="date-text">Date</h5>
-                <h5 class="header-text">Interval</h5>
-            </div>
+                <div id="submit-options-div" class="col-md-3">
+                    <button class="" id="add-new-row-button" onclick="addNewRow(); return false">+ New row</button> <br />
 
-            <div class="inputs row">
-                @*<input class="stock-inputs" type="text" />
-                <input class="numShares-inputs" type="number" min="0" />
-                <input class="date-inputs" type="date" />*@
-            </div>
+                    <button class="" id="calculate-button" onclick="calculatePortfolio(); return false">Calculate</button>
 
-        </div>
+                </div>
 
-
-
-        <div class="row">
-            <div id="submit-options-div" class="col-md-3">
-                <button class="" id="add-new-row-button" onclick="addNewRow(); return false">+ New row</button> <br />
-
-                <div hidden id="result-date-div">Target Date:<input type="date" id="result-date" /></div> <br />
-
-                <button class="" id="calculate-button" onclick="calculatePortfolio(); return false">Calculate</button>
-
+                <p id="message" />
             </div>
 
         </div>
 
         <div id="result-div">
             <div class="loader"></div>
+
             <div id="empty-block"></div>
 
-            <div id="result-data">
+            <div class="jumbotron" id="result-data">
+                <h1>Results: </h1>
+
                 <h3 id="roi-text"></h3>
                 <h3 id="total-cost-text"></h3>
                 <h3 id="total-value-text"></h3>
@@ -105,17 +103,16 @@
         <script>
             var intervalValues = ["One-time", "Weekly", "Bi-weekly", "Monthly", "Bi-Monthly", "Bi-annually", "Annually"];
 
-            document.getElementById("result-date").value = (new Date()).toISOString().substr(0, 10);
-
-                function updateInputHeader() {
-                    if (document.getElementById("input-checkbox").checked) {
-                        document.getElementById("input-type-text").innerHTML = "$ (USD)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-                    } else {
-                        document.getElementById("input-type-text").innerHTML = "# of Shares"
-                    }
+            function updateInputHeader() {
+                if (document.getElementById("input-checkbox").checked) {
+                    document.getElementById("input-type-text").innerHTML = "$ (USD)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+                } else {
+                    document.getElementById("input-type-text").innerHTML = "# of Shares"
+                }
             }
 
             var $loading = $('.loader').hide();
+            $('#result-data').hide();
 
             addNewRow();
 
@@ -163,29 +160,12 @@
                 document.getElementById("inputs-all-rows").appendChild(row);
             }
 
-            function isValid(str){
-             return !/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g.test(str);
-            }
-
-
-            function addMonths(date, months) {
-                var d = date.getDate();
-                date.setMonth(date.getMonth() + +months);
-                if (date.getDate() != d) {
-                  date.setDate(0);
-                }
-                return date;
-            }
-
             function calculatePortfolio() {
-                // handle animations 
+                // handle animations
                 $loading.show();
                 $('#empty-block').show();
                 $('#result-data').hide();
-                $('html,body').animate({
-                    scrollTop: $("#result-div").offset().top
-                }, 'slow');            
-
+                document.getElementById("message").innerText = "";
 
                 // Organize the data before sending it to the controller
                 var stockInputs = $(".stock-inputs");
@@ -193,7 +173,16 @@
                 var dateInputs = $(".date-inputs");
                 var frequencyInputs = $(".interval-inputs");
 
-                var targetDate = document.getElementById("result-date").value;
+                stockInputs.each(function () {
+                    this.style.borderColor = "gray";
+                })
+                numSharesInputs.each(function () {
+                    this.style.borderColor = "gray";
+                });
+                dateInputs.each(function () {
+                    this.style.borderColor = "gray";
+                });
+
 
                 var count = stockInputs.length;
 
@@ -208,8 +197,29 @@
 
                     var today = new Date();
 
-                    if (symbol == "" || !isValid(symbol) || isNaN(numShares) || numShares < 0 || date == "" || intervalValues.indexOf(frequency) === -1 || parseDate(date) > today) {
-                        alert("Unallowed value on row: " + (i + 1));
+                    var messageElement = document.getElementById("message");
+
+                    if (symbol == "" || !isValid(symbol)) {
+                        messageElement.innerText = "Error: Invalid symbol in row: " + (i + 1);
+                        messageElement.style.color = "red";
+                        stockInputs[i].style.borderColor = "red";
+                        $loading.hide();
+                        return;
+                    }
+
+                    if (isNaN(numShares) || numShares <= 0) {
+                        messageElement.innerText = "Error: Invalid number in row: " + (i + 1);
+                        messageElement.style.color = "red";
+                        numSharesInputs[i].style.borderColor = "red";
+                        $loading.hide();
+                        return;
+                    }
+
+                    if (date == "" || intervalValues.indexOf(frequency) === -1 || parseDate(date) > today) {
+                        messageElement.innerText = "Error: Invalid date in row: " + (i + 1);
+                        messageElement.style.color = "red";
+                        dateInputs[i].style.borderColor = "red";
+                        $loading.hide();
                         return;
                     }
 
@@ -271,10 +281,13 @@
                             });
 
                             indexDate.setDate(indexDate.getDate() + dayIntervals);
-                            
+
                         }
                     }
                 }
+                $('html,body').animate({
+                    scrollTop: $("#result-div").offset().top
+                }, 'slow');
 
                 console.log("inputData:", inputData);
 
@@ -285,10 +298,16 @@
                     url: "@Url.Action("Calculate")",
                     dataType: "json",
                     type: 'POST',
-                    data: { inputData: JSON.stringify(inputData), targetDate: targetDate, moneyFormat: moneyFormat, reinvestDividends: reinvestDividends },
+                    data: { inputData: JSON.stringify(inputData), moneyFormat: moneyFormat, reinvestDividends: reinvestDividends },
                     success: function (response) {
                         $loading.hide();
-                        displayResults(response.result);
+
+                        if (response.status === true) {
+                            displayResults(response.result);
+                        } else {
+                            document.getElementById("message").style.color = "red";
+                            document.getElementById("message").innerText = "Error: " + response.message;
+                        }
                     },
                     error: function (error) {
                         $loading.hide();
@@ -298,11 +317,13 @@
                 });
             }
 
-            // startOfYearDataPoints is passed in as a reference as an out parameter
+
+            /* SECTION: METHODS RELATED TO POPULATING AND DISPLAYING RESULTS */
+
             function displayNetworthOverTime(networthDataPoints, startOfYearDataPoints) {
                 var dataPointsForNetworth = [];
 
-                var yearIndex = (new Date(networthDataPoints[0].date)).getFullYear(); 
+                var yearIndex = (new Date(networthDataPoints[0].date)).getFullYear();
 
                 networthDataPoints.forEach(function (dataPoint) {
                     var date = new Date(dataPoint.date);
@@ -442,7 +463,7 @@
 
                 var previousEarnings = 0;
                 var previousContributions = 0;
-                
+
                 for (var i = 0; i < startOfYearDataPoints.length; i++) {
                     var dataPoint = startOfYearDataPoints[i];
 
@@ -494,7 +515,7 @@
                     data: [{
 		                type: "column",
 		                name: "Contributions",
-		                showInLegend: true,      
+		                showInLegend: true,
                         indexLabel: ((contributionDataPoints.length > 10) ? "{}" : "${y}"),
                         dataPoints: contributionDataPoints
 	                },
@@ -524,7 +545,7 @@
 
                 if (roi > 0) {
                     document.getElementById("roi-text").style.color = "#4CAF50";
-                } 
+                }
                 if (roi < 0) {
                     document.getElementById("roi-text").style.color = "red";
                 }
@@ -542,6 +563,8 @@
                 $('#result-data').show();
                 $('#empty-block').hide();
 
+                console.log("raw result: " + result);
+
                 var formattedResult = JSON.parse(result);
                 var allStockPriceData = formattedResult.allStockPriceData;
                 var networthDataPoints = formattedResult.networthDataPoints;
@@ -553,7 +576,7 @@
                 populateResultText(networthDataPoints);
 
                 displayNetworthOverTime(networthDataPoints, startOfYearDataPoints);
-                
+
                 displaySharesDistribution(networthDataPoints, allStockPriceData);
 
                 console.log("startOfYearDataPoints:", startOfYearDataPoints);
@@ -572,6 +595,8 @@
                 displayYearlyContributionAndEarnings(startOfYearDataPoints);
             }
 
+
+            /* SECTION: SMALL HELPER FUNCTIONS */
             function parseDate(s) {
                 var b = s.split(/\D/);
                 return new Date(b[0], --b[1], b[2]);
@@ -581,6 +606,18 @@
                 return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
             }
 
+            function isValid(str){
+                return !/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g.test(str);
+            }
+
+            function addMonths(date, months) {
+                var d = date.getDate();
+                date.setMonth(date.getMonth() + +months);
+                if (date.getDate() != d) {
+                  date.setDate(0);
+                }
+                return date;
+            }
 
         </script>
 

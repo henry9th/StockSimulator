@@ -285,7 +285,7 @@ namespace StockSimulator.Controllers
 
 
         [HttpPost]
-        public IActionResult Calculate(string inputData, DateTime targetDate, bool moneyFormat, bool reinvestDividends)
+        public IActionResult Calculate(string inputData, bool moneyFormat, bool reinvestDividends)
         {
 
             var inputDataList = JsonConvert.DeserializeObject<List<Stock>>(inputData).Select(stock =>
@@ -310,8 +310,9 @@ namespace StockSimulator.Controllers
                 {
                     return Json(new
                     {
-                        result = "Could not find symbol: " + symbol,
-                        status = false
+                        result = new string[0],
+                        status = false,
+                        message = "Could not find symbol: " + symbol 
                     });
                 }
 
