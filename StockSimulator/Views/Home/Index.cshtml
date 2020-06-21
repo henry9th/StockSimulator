@@ -34,7 +34,7 @@
             </div>
 
             <div class="switch-div">
-                <h6 class="switch-headers">Reinvest Dividends?</h6>
+                <h6 class="switch-headers">Reinvest?</h6>
 
                 <label class="switch">
                     <input id="input-checkbox-reinvest" type="checkbox">
@@ -196,6 +196,7 @@
                     var frequency = frequencyInputs[i].value;
 
                     var today = new Date();
+                    var nineteenEighty = new Date(1980, 1, 1, 0, 0, 0, 0);
 
                     var messageElement = document.getElementById("message");
 
@@ -215,7 +216,7 @@
                         return;
                     }
 
-                    if (date == "" || intervalValues.indexOf(frequency) === -1 || parseDate(date) > today) {
+                    if (date == "" || intervalValues.indexOf(frequency) === -1 || parseDate(date) > today || parseDate(date) < nineteenEighty) {
                         messageElement.innerText = "Error: Invalid date in row: " + (i + 1);
                         messageElement.style.color = "red";
                         dateInputs[i].style.borderColor = "red";
